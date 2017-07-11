@@ -1,6 +1,5 @@
 # gosha3
-
-## Golang script to test sha3 operations in serial and parallel
+Golang script to test sha3 operations in serial and parallel
 
 ## Usage
 ```
