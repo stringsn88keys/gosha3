@@ -25,7 +25,7 @@ func main() {
 		before = fmt.Sprintf("Message%d", addOn)
 		after = sha3.Sum512([]byte(before))
 		base64Encoding = base64.StdEncoding.EncodeToString(after[:])
-		if strings.HasPrefix(base64Encoding, "FART") {
+		if strings.HasPrefix(base64Encoding, "TEST") {
 			fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
 			break
 		}
@@ -45,7 +45,6 @@ SEARCHY:
 		case resultString, _ = <-result:
 			break SEARCHY
 		default:
-			fmt.Printf("%d -- \n", addOnStart)
 		}
 		addOnStart++
 	}
@@ -66,7 +65,7 @@ func scan1000000(addOnStart int64, result chan string, sem chan bool) {
 		after = sha3.Sum512([]byte(before))
 		base64Encoding = base64.StdEncoding.EncodeToString(after[:])
 
-		if strings.HasPrefix(base64Encoding, "FART") {
+		if strings.HasPrefix(base64Encoding, "TEST") {
 			result <- fmt.Sprintf("%d: %s\n", i, base64Encoding)
 			break
 		}
