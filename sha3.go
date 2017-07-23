@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"flag"
 	"fmt"
 	"golang.org/x/crypto/sha3"
 	"strings"
@@ -15,42 +16,48 @@ func main() {
 	var result chan string = make(chan string)
 	var resultString string
 	var addOnStart int64
+	var concurrencyFlag = flag.Int("concurrency", 1, "Number of goroutines to run simultaneously")
+	var start time.Time
 
-	start := time.Now()
-	addOn := 0
-	concurrency := 8
-	sem := make(chan bool, concurrency)
+	flag.Parse()
+	concurrency := *concurrencyFlag
+	if concurrency == 1 {
+		addOn := 0
+		start = time.Now()
 
-	for {
-		before = fmt.Sprintf("Message%d", addOn)
-		after = sha3.Sum512([]byte(before))
-		base64Encoding = base64.StdEncoding.EncodeToString(after[:])
-		if strings.HasPrefix(base64Encoding, "TEST") {
-			fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
-			break
+		for {
+			before = fmt.Sprintf("Message%d", addOn)
+			after = sha3.Sum512([]byte(before))
+			base64Encoding = base64.StdEncoding.EncodeToString(after[:])
+			if strings.HasPrefix(base64Encoding, "TEST") {
+				fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
+				break
+			}
+			addOn++
 		}
-		addOn++
-	}
-	fmt.Printf("%d: %s\n", addOn, base64Encoding)
+		fmt.Printf("%d: %s\n", addOn, base64Encoding)
 
-	addOnStart = 0
-	start = time.Now()
+	} else {
+		addOnStart = 0
+		start = time.Now()
 
-SEARCHY:
-	for {
-		sem <- true
-		go scan1000000(addOnStart, result, sem)
+		sem := make(chan bool, concurrency)
+	SEARCHY:
+		for {
+			sem <- true
+			go scan1000000(addOnStart, result, sem)
 
-		select {
-		case resultString, _ = <-result:
-			break SEARCHY
-		default:
+			select {
+			case resultString, _ = <-result:
+				break SEARCHY
+			default:
+			}
+			addOnStart++
 		}
-		addOnStart++
-	}
 
-	fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
-	fmt.Print(resultString)
+		fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
+		fmt.Print(resultString)
+	}
 }
 
 func scan1000000(addOnStart int64, result chan string, sem chan bool) {
