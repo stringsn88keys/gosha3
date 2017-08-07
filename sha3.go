@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var testString string
+
 func main() {
 	var before string
 	var after [64]byte
@@ -17,10 +19,12 @@ func main() {
 	var resultString string
 	var addOnStart int64
 	var concurrencyFlag = flag.Int("concurrency", 1, "Number of goroutines to run simultaneously")
+	var testStringFlag = flag.String("search", "TEST", "String to search for")
 	var start time.Time
 
 	flag.Parse()
 	concurrency := *concurrencyFlag
+	testString = *testStringFlag
 	if concurrency == 1 {
 		addOn := 0
 		start = time.Now()
@@ -29,7 +33,7 @@ func main() {
 			before = fmt.Sprintf("Message%d", addOn)
 			after = sha3.Sum512([]byte(before))
 			base64Encoding = base64.StdEncoding.EncodeToString(after[:])
-			if strings.HasPrefix(base64Encoding, "TEST") {
+			if strings.HasPrefix(base64Encoding, testString) {
 				fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
 				break
 			}
@@ -72,7 +76,7 @@ func scan1000000(addOnStart int64, result chan string, sem chan bool) {
 		after = sha3.Sum512([]byte(before))
 		base64Encoding = base64.StdEncoding.EncodeToString(after[:])
 
-		if strings.HasPrefix(base64Encoding, "TEST") {
+		if strings.HasPrefix(base64Encoding, testString) {
 			result <- fmt.Sprintf("%d: %s\n", i, base64Encoding)
 			break
 		}
