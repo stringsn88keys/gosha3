@@ -2,6 +2,6 @@ system,environment,search,threads,time
 Raspberry Pi 3 B+,Raspbian with go1.11.6,TEST,1,528
 Raspberry Pi 3 B+,Raspbian with go1.11.6,TEST,4,166
 9750H Mac,macOS with go1.15.6,TEST,4,5
-3900X,Windows 10 (Ubuntu 20.04, go v1.13.8),TEST,1,13
-3900X,Windows 10 (Ubuntu 20.04, go v1.13.8),TEST,10,8
+3900X,"Windows 10 (Ubuntu 20.04, go v1.13.8)",TEST,1,13
+3900X,"Windows 10 (Ubuntu 20.04, go v1.13.8)",TEST,10,8
 
