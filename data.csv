@@ -1,0 +1,5 @@
+system,environment,search,threads,time
+Raspberry Pi 3 B+,Raspbian with go1.11.6,1,528
+Raspberry Pi 3 B+,Raspbian with go1.11.6,4,166
+9750H Mac,macOS with go1.15.6,4,5
+
