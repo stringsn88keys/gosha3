@@ -4,9 +4,12 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"golang.org/x/crypto/sha3"
 )
 
 var testString string
@@ -17,7 +20,6 @@ func main() {
 	var base64Encoding string
 	var result chan string = make(chan string)
 	var resultString string
-	var addOnStart int64
 	var concurrencyFlag = flag.Int("concurrency", 1, "Number of goroutines to run simultaneously")
 	var testStringFlag = flag.String("search", "TEST", "String to search for")
 	var start time.Time
@@ -42,22 +44,28 @@ func main() {
 		fmt.Printf("%d: %s\n", addOn, base64Encoding)
 
 	} else {
-		addOnStart = 0
 		start = time.Now()
 
-		sem := make(chan bool, concurrency)
-	SEARCHY:
-		for {
-			sem <- true
-			go scan1000000(addOnStart, result, sem)
+		// Use atomic counter for thread-safe incrementing
+		var counter int64
+		var found int32 // atomic flag to signal when result is found
+		var wg sync.WaitGroup
 
-			select {
-			case resultString, _ = <-result:
-				break SEARCHY
-			default:
-			}
-			addOnStart++
+		// Start worker goroutines
+		for i := 0; i < concurrency; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				scan1000000Optimized(&counter, result, &found)
+			}()
 		}
+
+		// Wait for result
+		resultString = <-result
+		atomic.StoreInt32(&found, 1) // Signal all workers to stop
+
+		// Wait for all workers to finish
+		wg.Wait()
 
 		fmt.Printf("%d seconds\n", int64(time.Since(start)/time.Second))
 		fmt.Print(resultString)
@@ -79,6 +87,38 @@ func scan1000000(addOnStart int64, result chan string, sem chan bool) {
 		if strings.HasPrefix(base64Encoding, testString) {
 			result <- fmt.Sprintf("%d: %s\n", i, base64Encoding)
 			break
+		}
+	}
+}
+
+// Optimized version that uses atomic operations and early termination
+func scan1000000Optimized(counter *int64, result chan string, found *int32) {
+	var before string
+	var after [64]byte
+	var base64Encoding string
+
+	for {
+		// Check if result was already found by another goroutine
+		if atomic.LoadInt32(found) == 1 {
+			return
+		}
+
+		// Atomically get next work item
+		workItem := atomic.AddInt64(counter, 1) - 1
+
+		before = fmt.Sprintf("Message%d", workItem)
+		after = sha3.Sum512([]byte(before))
+		base64Encoding = base64.StdEncoding.EncodeToString(after[:])
+
+		if strings.HasPrefix(base64Encoding, testString) {
+			// Try to send result, but don't block if channel is full
+			select {
+			case result <- fmt.Sprintf("%d: %s\n", workItem, base64Encoding):
+				return
+			default:
+				// Another goroutine already found a result
+				return
+			}
 		}
 	}
 }
