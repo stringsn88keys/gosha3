@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,6 +44,7 @@ var (
 	serverFound   int32
 	serverResult  string
 	serverMutex   sync.RWMutex
+	serverStart   time.Time
 )
 
 func main() {
@@ -172,6 +174,7 @@ func scan1000000Optimized(counter *int64, result chan string, found *int32) {
 
 // startServer starts the HTTP server for work distribution
 func startServer(port string) {
+	serverStart = time.Now()
 	http.HandleFunc("/work", handleWorkRequest)
 	http.HandleFunc("/found", handleFoundResult)
 
@@ -180,6 +183,7 @@ func startServer(port string) {
 	fmt.Println("Endpoints:")
 	fmt.Println("  POST /work - Request work range")
 	fmt.Println("  POST /found - Submit found result")
+	fmt.Println("Waiting for clients...")
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		fmt.Printf("Server error: %v\n", err)
@@ -239,7 +243,20 @@ func handleFoundResult(w http.ResponseWriter, r *http.Request) {
 		serverMutex.Lock()
 		serverResult = fmt.Sprintf("%d: %s\n", req.WorkItem, req.Base64Encoding)
 		serverMutex.Unlock()
-		fmt.Printf("Result found by client %s: %s", req.ClientID, serverResult)
+
+		totalTime := time.Since(serverStart)
+		fmt.Printf("\n=== RESULT FOUND ===\n")
+		fmt.Printf("Found by client: %s\n", req.ClientID)
+		fmt.Printf("Total server runtime: %d seconds\n", int64(totalTime/time.Second))
+		fmt.Printf("Result: %s", serverResult)
+		fmt.Printf("===================\n")
+
+		// Exit the server after a short delay to allow response to be sent
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			fmt.Println("Server shutting down...")
+			os.Exit(0)
+		}()
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -247,6 +264,15 @@ func handleFoundResult(w http.ResponseWriter, r *http.Request) {
 
 // startClient starts the client to request work from server
 func startClient(serverAddr string, concurrency int) {
+	fmt.Printf("Connecting to server at %s...\n", serverAddr)
+
+	// Wait for server to be available
+	if !waitForServer(serverAddr) {
+		fmt.Println("Failed to connect to server after multiple attempts")
+		return
+	}
+
+	fmt.Println("Connected to server successfully!")
 	start := time.Now()
 
 	// Start worker goroutines
@@ -375,4 +401,26 @@ func submitResult(serverAddr, result, clientID string) {
 
 	jsonData, _ := json.Marshal(req)
 	http.Post("http://"+serverAddr+"/found", "application/json", strings.NewReader(string(jsonData)))
+}
+
+// waitForServer waits for the server to become available
+func waitForServer(serverAddr string) bool {
+	maxRetries := 30 // 30 seconds total
+	retryDelay := time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		// Try to make a simple HTTP request to check if server is up
+		resp, err := http.Get("http://" + serverAddr + "/work")
+		if err == nil {
+			resp.Body.Close()
+			return true
+		}
+
+		if i < maxRetries-1 {
+			fmt.Printf("Server not available, retrying in %v... (%d/%d)\n", retryDelay, i+1, maxRetries)
+			time.Sleep(retryDelay)
+		}
+	}
+
+	return false
 }

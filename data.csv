@@ -5,4 +5,4 @@ Raspberry Pi 3 B+,Raspbian with go1.11.6,TEST,4,166
 3900X,"Windows 10 (Ubuntu 20.04, go v1.13.8)",TEST,1,13
 3900X,"Windows 10 (Ubuntu 20.04, go v1.13.8)",TEST,10,8
 MacBook Pro M4Max,Sequoia 15.5,THOMAS,14,201
-5950X,"Windows 10",THOMAS,32,191
+5950X,"Windows 10",THOMAS,32,180
